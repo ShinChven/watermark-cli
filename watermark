@@ -1,0 +1,42 @@
+#!/bin/bash
+
+# Check if source directory or image file and watermark text are provided
+if [ -z "$1" ] || [ -z "$2" ]; then
+  echo "Usage: $0 <source_dir_or_image_path> <watermark_text>"
+  exit 1
+fi
+
+# Create watermark_images directory under the source directory (if a directory path is used)
+if [ -d "$1" ]; then
+  mkdir -p "$1/watermark_images"
+fi
+
+# Function to add watermark to a single image file
+function watermark_image {
+  # Add watermark to image and save to watermark_images directory
+  watermarked_image="$1/watermark_images/$(basename "$2")"
+  convert "$2" -gravity center -pointsize 36 -fill 'rgba(255,255,255,0.3)' -draw "text 0,0 '$3'" "$watermarked_image"
+  echo "Watermarked $2 to $watermarked_image"
+}
+
+# Check if source path is a file
+if [ -f "$1" ]; then
+  # Check if file is an image
+  if [[ "$1" == *.jpg || "$1" == *.jpeg || "$1" == *.png ]]; then
+    watermark_image "$(dirname "$1")" "$1" "$2"
+  else
+    echo "Error: $1 is not an image file"
+    exit 1
+  fi
+elif [ -d "$1" ]; then
+  # Loop through all images in the source directory
+  for image in "$1"/*.jpg "$1"/*.jpeg "$1"/*.png; do
+    # Check if image is a file
+    if [ -f "$image" ]; then
+      watermark_image "$1" "$image" "$2"
+    fi
+  done
+else
+  echo "Error: $1 is not a valid file or directory"
+  exit 1
+fi
