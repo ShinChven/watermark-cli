@@ -16,9 +16,7 @@ fi
 # Create watermark_images directory under the source directory (if a directory path is used)
 if [ -d "$1" ]; then
   mkdir -p "$1/watermark_images"
-fi
-
-if [ -f "$1" ]; then
+elif [ -f "$1" ]; then
   mkdir -p "$(dirname "$1")/watermark_images"
 fi
 
