@@ -24,7 +24,7 @@ fi
 function watermark_image {
   # Add watermark to image and save to watermark_images directory
   watermarked_image="$1/watermark_images/$(basename "$2")"
-  convert "$2" -gravity center -pointsize 36 -fill 'rgba(255,255,255,0.3)' -draw "text 0,0 '$3'" "$watermarked_image"
+  convert "$2" -gravity center -strip -pointsize 36 -fill 'rgba(255,255,255,0.3)' -draw "text 0,0 '$3'" "$watermarked_image"
   echo "Watermarked $2 to $watermarked_image"
 }
 
