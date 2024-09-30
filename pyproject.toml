@@ -27,4 +27,3 @@ watermark = "watermark_cli.watermark:main"
 
 [tool.setuptools]
 packages = ["watermark_cli"]
-exclude = ["legacy*"]

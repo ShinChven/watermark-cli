@@ -2,7 +2,21 @@
 
 import argparse
 import os
+import json
 from PIL import Image, ImageDraw, ImageFont
+
+CONFIG_FILE = os.path.expanduser("~/.watermark-cli/config.json")
+
+def load_config():
+    if os.path.exists(CONFIG_FILE):
+        with open(CONFIG_FILE, 'r') as f:
+            return json.load(f)
+    return {}
+
+def save_config(config):
+    os.makedirs(os.path.dirname(CONFIG_FILE), exist_ok=True)
+    with open(CONFIG_FILE, 'w') as f:
+        json.dump(config, f)
 
 def add_watermark(image_path, output_path, watermark_text):
     with Image.open(image_path) as img:
@@ -65,13 +79,39 @@ def process_images(source_path, watermark_text):
     else:
         print(f"Error: {source_path} is not a valid file or directory")
 
+def set_config(default_text):
+    config = load_config()
+    config['default_text'] = default_text
+    save_config(config)
+    print(f"Default watermark text set to: {default_text}")
+
 def main():
+    config = load_config()
+    default_text = config.get('default_text', '')
+
     parser = argparse.ArgumentParser(description="Add watermark to images")
-    parser.add_argument("source", help="Source directory or image file path")
-    parser.add_argument("--text", default="@ShinChven", help="Watermark text (default: @ShinChven)")
+    subparsers = parser.add_subparsers(dest="command", help="Available commands")
+
+    # Config command
+    config_parser = subparsers.add_parser("config", help="Set default watermark text")
+    config_parser.add_argument("--default-text", help="Default watermark text to set")
+
+    # Watermark command
+    watermark_parser = subparsers.add_parser("watermark", help="Add watermark to images")
+    watermark_parser.add_argument("source", help="Source directory or image file path")
+    watermark_parser.add_argument("--text", default=default_text, help="Watermark text (overrides default)")
+
     args = parser.parse_args()
 
-    process_images(args.source, args.text)
+    if args.command == "config":
+        set_config(args.default_text)
+    elif args.command == "watermark":
+        if not args.text:
+            print("Error: No watermark text provided. Please use --text or set a default text with the 'config' command")
+            return
+        process_images(args.source, args.text)
+    else:
+        parser.print_help()
 
 if __name__ == "__main__":
     main()
