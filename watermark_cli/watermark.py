@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 
-import argparse
 import os
 import json
+import sys
 from PIL import Image, ImageDraw, ImageFont
 
 CONFIG_FILE = os.path.expanduser("~/.watermark-cli/config.json")
@@ -20,42 +20,30 @@ def save_config(config):
 
 def add_watermark(image_path, output_path, watermark_text):
     with Image.open(image_path) as img:
-        # Create a transparent layer for the watermark
         watermark = Image.new('RGBA', img.size, (0, 0, 0, 0))
         draw = ImageDraw.Draw(watermark)
-
-        # Use a default font (you may need to specify a font file path for custom fonts)
         font = ImageFont.load_default()
-
-        # Calculate text size and position
-        text_width, text_height = draw.textsize(watermark_text, font)
+        left, top, right, bottom = draw.textbbox((0, 0), watermark_text, font=font)
+        text_width = right - left
+        text_height = bottom - top
         x = (img.width - text_width) // 2
         y = (img.height - text_height) // 2
-
-        # Draw the watermark text
         draw.text((x, y), watermark_text, font=font, fill=(255, 255, 255, 77))
 
-        # Combine the original image with the watermark
         if img.mode in ('RGBA', 'LA') or (img.mode == 'P' and 'transparency' in img.info):
-            # If the image has an alpha channel or transparency, use alpha_composite
             watermarked = Image.alpha_composite(img.convert('RGBA'), watermark)
         else:
-            # If the image is not transparent, paste the watermark
             watermarked = img.copy()
             watermarked.paste(watermark, (0, 0), watermark)
 
-        # Save the watermarked image
         if img.format == 'JPEG':
-            # For JPEG, we need to remove the alpha channel and use high quality
             watermarked = watermarked.convert('RGB')
             watermarked.save(output_path, quality=95, optimize=True)
         elif img.format == 'WEBP':
-            # For WebP, we can save with lossless compression
             watermarked.save(output_path, format='WEBP', lossless=True)
         else:
-            # For other formats (like PNG), save with original format and mode
             watermarked.save(output_path, format=img.format)
-    
+
     print(f"Watermarked {image_path} to {output_path}")
 
 def process_images(source_path, watermark_text):
@@ -86,32 +74,31 @@ def set_config(default_text):
     print(f"Default watermark text set to: {default_text}")
 
 def main():
+    if len(sys.argv) < 2:
+        print("Usage: watermark <image_path> [--text 'Your Watermark'] or watermark config --default-text 'Your Text'")
+        return
+
     config = load_config()
     default_text = config.get('default_text', '')
 
-    parser = argparse.ArgumentParser(description="Add watermark to images")
-    subparsers = parser.add_subparsers(dest="command", help="Available commands")
-
-    # Config command
-    config_parser = subparsers.add_parser("config", help="Set default watermark text")
-    config_parser.add_argument("--default-text", help="Default watermark text to set")
-
-    # Watermark command
-    watermark_parser = subparsers.add_parser("watermark", help="Add watermark to images")
-    watermark_parser.add_argument("source", help="Source directory or image file path")
-    watermark_parser.add_argument("--text", default=default_text, help="Watermark text (overrides default)")
-
-    args = parser.parse_args()
-
-    if args.command == "config":
-        set_config(args.default_text)
-    elif args.command == "watermark":
-        if not args.text:
-            print("Error: No watermark text provided. Please use --text or set a default text with the 'config' command")
-            return
-        process_images(args.source, args.text)
+    if sys.argv[1] == 'config':
+        if len(sys.argv) == 4 and sys.argv[2] == '--default-text':
+            set_config(sys.argv[3])
+        else:
+            print("Usage for config: watermark config --default-text 'Your Text'")
     else:
-        parser.print_help()
+        source = sys.argv[1]
+        custom_text = None
+        if len(sys.argv) == 4 and sys.argv[2] == '--text':
+            custom_text = sys.argv[3]
+        
+        watermark_text = custom_text if custom_text else default_text
+
+        if not watermark_text:
+            print("Error: No watermark text provided. Please use --text or set a default text with the config command")
+            return
+
+        process_images(source, watermark_text)
 
 if __name__ == "__main__":
     main()
